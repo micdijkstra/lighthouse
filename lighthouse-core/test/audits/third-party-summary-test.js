@@ -10,6 +10,8 @@ const networkRecordsToDevtoolsLog = require('../network-records-to-devtools-log.
 
 const pwaTrace = require('../fixtures/traces/progressive-app-m60.json');
 const pwaDevtoolsLog = require('../fixtures/traces/progressive-app-m60.devtools.log.json');
+const netlifyTrace = require('../fixtures/traces/progressive-app-m60-netlify.json');
+const netlifyDevtoolsLog = require('../fixtures/traces/progressive-app-m60-netlify.devtools.log.json');
 const noThirdPartyTrace = require('../fixtures/traces/no-tracingstarted-m74.json');
 
 /* eslint-env jest */
@@ -80,5 +82,37 @@ describe('Third party summary', () => {
       score: 1,
       notApplicable: true,
     });
+  });
+
+  it('does not return third party that matches main resource domain', async () => {
+    const artifacts = {
+      devtoolsLogs: {defaultPass: netlifyDevtoolsLog},
+      traces: {defaultPass: netlifyTrace},
+    };
+
+    const results = await ThirdPartySummary.audit(artifacts, {computedCache: new Map()});
+
+    expect(results.details.items).toEqual([
+      {
+        entity: {
+          text: 'Google Tag Manager',
+          type: 'link',
+          url: 'https://marketingplatform.google.com/about/tag-manager/',
+        },
+        mainThreadTime: 104.70300000000002,
+        blockingTime: 18.186999999999998,
+        transferSize: 30827,
+      },
+      {
+        entity: {
+          text: 'Google Analytics',
+          type: 'link',
+          url: 'https://www.google.com/analytics/analytics/',
+        },
+        mainThreadTime: 87.576,
+        blockingTime: 0,
+        transferSize: 20913,
+      },
+    ]);
   });
 });

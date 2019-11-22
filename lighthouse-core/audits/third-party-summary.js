@@ -10,6 +10,7 @@ const thirdPartyWeb = require('third-party-web/httparchive-nostats-subset');
 const Audit = require('./audit.js');
 const BootupTime = require('./bootup-time.js');
 const i18n = require('../lib/i18n/i18n.js');
+const URL = require('../lib/url-shim.js');
 const NetworkRecords = require('../computed/network-records.js');
 const MainThreadTasks = require('../computed/main-thread-tasks.js');
 
@@ -78,8 +79,11 @@ class ThirdPartySummary extends Audit {
     /** @type {Map<ThirdPartyEntity, {mainThreadTime: number, transferSize: number, blockingTime: number}>} */
     const entities = new Map();
     const defaultEntityStat = {mainThreadTime: 0, blockingTime: 0, transferSize: 0};
+    const mainResource = networkRecords[0];
 
     for (const request of networkRecords) {
+      if (URL.rootDomainsMatch(request.url, mainResource.url)) continue;
+
       const entity = ThirdPartySummary.getEntitySafe(request.url);
       if (!entity) continue;
 
@@ -92,6 +96,8 @@ class ThirdPartySummary extends Audit {
 
     for (const task of mainThreadTasks) {
       const attributeableURL = BootupTime.getAttributableURLForTask(task, jsURLs);
+      if (URL.rootDomainsMatch(attributeableURL, mainResource.url)) continue;
+
       const entity = ThirdPartySummary.getEntitySafe(attributeableURL);
       if (!entity) continue;
 
