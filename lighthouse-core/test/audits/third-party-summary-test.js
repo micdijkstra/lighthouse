@@ -10,8 +10,6 @@ const networkRecordsToDevtoolsLog = require('../network-records-to-devtools-log.
 
 const pwaTrace = require('../fixtures/traces/progressive-app-m60.json');
 const pwaDevtoolsLog = require('../fixtures/traces/progressive-app-m60.devtools.log.json');
-const netlifyTrace = require('../fixtures/traces/progressive-app-m60-netlify.json');
-const netlifyDevtoolsLog = require('../fixtures/traces/progressive-app-m60-netlify.devtools.log.json');
 const noThirdPartyTrace = require('../fixtures/traces/no-tracingstarted-m74.json');
 
 /* eslint-env jest */
@@ -20,6 +18,7 @@ describe('Third party summary', () => {
     const artifacts = {
       devtoolsLogs: {defaultPass: pwaDevtoolsLog},
       traces: {defaultPass: pwaTrace},
+      URL: {finalUrl: 'https://pwa-rocks.com'},
     };
 
     const results = await ThirdPartySummary.audit(artifacts, {computedCache: new Map()});
@@ -56,6 +55,7 @@ describe('Third party summary', () => {
     const artifacts = {
       devtoolsLogs: {defaultPass: pwaDevtoolsLog},
       traces: {defaultPass: pwaTrace},
+      URL: {finalUrl: 'https://pwa-rocks.com'},
     };
 
     const settings = {throttlingMethod: 'simulate', throttling: {cpuSlowdownMultiplier: 4}};
@@ -73,6 +73,7 @@ describe('Third party summary', () => {
     const artifacts = {
       devtoolsLogs: {defaultPass: networkRecordsToDevtoolsLog([{url: 'chrome://version'}])},
       traces: {defaultPass: noThirdPartyTrace},
+      URL: {finalUrl: 'chrome://version'},
     };
 
     const settings = {throttlingMethod: 'simulate', throttling: {cpuSlowdownMultiplier: 4}};
@@ -86,8 +87,14 @@ describe('Third party summary', () => {
 
   it('does not return third party that matches main resource domain', async () => {
     const artifacts = {
-      devtoolsLogs: {defaultPass: netlifyDevtoolsLog},
-      traces: {defaultPass: netlifyTrace},
+      devtoolsLogs: {
+        defaultPass: networkRecordsToDevtoolsLog([
+          {url: 'https://facebook.com'},
+          {url: 'http://photos-c.ak.fbcdn.net/photos-ak-sf2p/photo.jpg'},
+        ]),
+      },
+      traces: {defaultPass: pwaTrace},
+      URL: {finalUrl: 'https://facebook.com'},
     };
 
     const results = await ThirdPartySummary.audit(artifacts, {computedCache: new Map()});
@@ -101,7 +108,7 @@ describe('Third party summary', () => {
         },
         mainThreadTime: 104.70300000000002,
         blockingTime: 18.186999999999998,
-        transferSize: 30827,
+        transferSize: 0,
       },
       {
         entity: {
@@ -111,7 +118,7 @@ describe('Third party summary', () => {
         },
         mainThreadTime: 87.576,
         blockingTime: 0,
-        transferSize: 20913,
+        transferSize: 0,
       },
     ]);
   });

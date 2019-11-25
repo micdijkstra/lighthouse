@@ -8,10 +8,12 @@
 const thirdPartyWeb = require('third-party-web/httparchive-nostats-subset');
 
 const Audit = require('./audit.js');
+const Util = require('../report/html/renderer/util.js');
 const BootupTime = require('./bootup-time.js');
 const i18n = require('../lib/i18n/i18n.js');
 const URL = require('../lib/url-shim.js');
 const NetworkRecords = require('../computed/network-records.js');
+const MainResource = require('../computed/main-resource.js');
 const MainThreadTasks = require('../computed/main-thread-tasks.js');
 
 const UIStrings = {
@@ -79,11 +81,8 @@ class ThirdPartySummary extends Audit {
     /** @type {Map<ThirdPartyEntity, {mainThreadTime: number, transferSize: number, blockingTime: number}>} */
     const entities = new Map();
     const defaultEntityStat = {mainThreadTime: 0, blockingTime: 0, transferSize: 0};
-    const mainResource = networkRecords[0];
 
     for (const request of networkRecords) {
-      if (URL.rootDomainsMatch(request.url, mainResource.url)) continue;
-
       const entity = ThirdPartySummary.getEntitySafe(request.url);
       if (!entity) continue;
 
@@ -96,8 +95,6 @@ class ThirdPartySummary extends Audit {
 
     for (const task of mainThreadTasks) {
       const attributeableURL = BootupTime.getAttributableURLForTask(task, jsURLs);
-      if (URL.rootDomainsMatch(attributeableURL, mainResource.url)) continue;
-
       const entity = ThirdPartySummary.getEntitySafe(attributeableURL);
       if (!entity) continue;
 
@@ -125,6 +122,8 @@ class ThirdPartySummary extends Audit {
     const trace = artifacts.traces[Audit.DEFAULT_PASS];
     const devtoolsLog = artifacts.devtoolsLogs[Audit.DEFAULT_PASS];
     const networkRecords = await NetworkRecords.request(devtoolsLog, context);
+    const mainResource = await MainResource.request({devtoolsLog, URL: artifacts.URL}, context);
+    const mainUrl = new URL(mainResource.url);
     const tasks = await MainThreadTasks.request(trace, context);
     const multiplier = settings.throttlingMethod === 'simulate' ?
       settings.throttling.cpuSlowdownMultiplier : 1;
@@ -134,6 +133,15 @@ class ThirdPartySummary extends Audit {
     const summary = {wastedBytes: 0, wastedMs: 0};
 
     const results = Array.from(summaryByEntity.entries())
+      .filter(([entity]) => {
+        return !entity.domains.find(domain => {
+          if (domain.startsWith('*.')) {
+            return thirdPartyWeb.getRootDomain(domain) === Util.getRootDomain(mainUrl);
+          }
+
+          return domain === mainUrl.hostname;
+        });
+      })
       .map(([entity, stats]) => {
         summary.wastedBytes += stats.transferSize;
         summary.wastedMs += stats.blockingTime;
