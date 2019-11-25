@@ -85,7 +85,7 @@ describe('Third party summary', () => {
     });
   });
 
-  it('does not return third party that matches main resource domain', async () => {
+  it('does not return third party entity that matches main resource entity', async () => {
     const artifacts = {
       devtoolsLogs: {
         defaultPass: networkRecordsToDevtoolsLog([
