@@ -131,6 +131,8 @@ class ThirdPartySummary extends Audit {
     const summary = {wastedBytes: 0, wastedMs: 0};
 
     const results = Array.from(summaryByEntity.entries())
+      // Don't consider the page we're on to be third-party.
+      // e.g. Facebook SDK isn't a third-party script on facebook.com
       .filter(([entity]) => !(mainEntity && mainEntity.name === entity.name))
       .map(([entity, stats]) => {
         summary.wastedBytes += stats.transferSize;
