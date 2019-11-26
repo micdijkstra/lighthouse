@@ -86,40 +86,35 @@ describe('Third party summary', () => {
   });
 
   it('does not return third party entity that matches main resource entity', async () => {
-    const artifacts = {
+    const externalArtifacts = {
       devtoolsLogs: {
         defaultPass: networkRecordsToDevtoolsLog([
-          {url: 'https://facebook.com'},
+          {url: 'http://example.com'},
           {url: 'http://photos-c.ak.fbcdn.net/photos-ak-sf2p/photo.jpg'},
         ]),
       },
       traces: {defaultPass: pwaTrace},
-      URL: {finalUrl: 'https://facebook.com'},
+      URL: {finalUrl: 'http://example.com'},
     };
-
-    const results = await ThirdPartySummary.audit(artifacts, {computedCache: new Map()});
-
-    expect(results.details.items).toEqual([
-      {
-        entity: {
-          text: 'Google Tag Manager',
-          type: 'link',
-          url: 'https://marketingplatform.google.com/about/tag-manager/',
-        },
-        mainThreadTime: 104.70300000000002,
-        blockingTime: 18.186999999999998,
-        transferSize: 0,
+    const facebookArtifacts = {
+      devtoolsLogs: {
+        defaultPass: networkRecordsToDevtoolsLog([
+          {url: 'http://facebook.com'},
+          {url: 'http://photos-c.ak.fbcdn.net/photos-ak-sf2p/photo.jpg'},
+        ]),
       },
-      {
-        entity: {
-          text: 'Google Analytics',
-          type: 'link',
-          url: 'https://www.google.com/analytics/analytics/',
-        },
-        mainThreadTime: 87.576,
-        blockingTime: 0,
-        transferSize: 0,
-      },
-    ]);
+      traces: {defaultPass: pwaTrace},
+      URL: {finalUrl: 'http://facebook.com'},
+    };
+    const context = {computedCache: new Map()};
+
+    const resultsOnExternal = await ThirdPartySummary.audit(externalArtifacts, context);
+    const resultsOnFacebook = await ThirdPartySummary.audit(facebookArtifacts, context);
+
+    const externalEntities = resultsOnExternal.details.items.map(item => item.entity.text);
+    const facebookEntities = resultsOnFacebook.details.items.map(item => item.entity.text);
+
+    expect(externalEntities).toEqual(['Google Tag Manager', 'Facebook', 'Google Analytics']);
+    expect(facebookEntities).toEqual(['Google Tag Manager', 'Google Analytics']);
   });
 });
